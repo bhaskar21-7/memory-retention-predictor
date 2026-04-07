@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryAI — Smart Revision Scheduler</title>
+<meta name="description" content="AI-powered memory retention predictor using the Ebbinghaus Forgetting Curve with personalized learning rates">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0a0a1a;--surface:rgba(255,255,255,0.04);--surface-hover:rgba(255,255,255,0.08);--glass:rgba(255,255,255,0.06);--glass-border:rgba(255,255,255,0.1);--text:#e2e8f0;--text-dim:#94a3b8;--text-bright:#f8fafc;--accent:#818cf8;--accent-glow:rgba(129,140,248,0.3);--green:#34d399;--yellow:#fbbf24;--red:#f87171;--pink:#f472b6;--ring-size:72px;--nav-h:64px;font-family:'Inter',system-ui,sans-serif}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 60% at 50% -20%,rgba(99,102,241,0.15),transparent),radial-gradient(ellipse 60% 40% at 80% 100%,rgba(168,85,247,0.1),transparent);pointer-events:none;z-index:0}
+.app{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:16px 16px calc(var(--nav-h) + 24px)}
+/* NAV */
+.nav{position:fixed;bottom:0;left:0;right:0;height:var(--nav-h);background:rgba(10,10,26,0.85);backdrop-filter:blur(20px);border-top:1px solid var(--glass-border);display:flex;z-index:100}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:none;border:none;color:var(--text-dim);font:500 10px/1 'Inter',sans-serif;cursor:pointer;transition:all .2s;position:relative}
+.nav-btn.active{color:var(--accent)}
+.nav-btn.active::before{content:'';position:absolute;top:-1px;left:20%;right:20%;height:2px;background:var(--accent);border-radius:0 0 4px 4px;box-shadow:0 0 12px var(--accent-glow)}
+.nav-btn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+/* CARDS */
+.card{background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;padding:20px;margin-bottom:12px;backdrop-filter:blur(8px);transition:transform .2s,box-shadow .2s}
+.card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,0.3)}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px}
+.stat-card{text-align:center;padding:16px 12px}
+.stat-val{font-size:28px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.stat-label{font-size:11px;color:var(--text-dim);margin-top:4px;text-transform:uppercase;letter-spacing:1px}
+/* PAGE */
+.page{display:none;animation:fadeUp .35s ease}
+.page.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+/* HEADINGS */
+h1{font-size:26px;font-weight:800;margin-bottom:4px;background:linear-gradient(135deg,#e2e8f0,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.subtitle{color:var(--text-dim);font-size:13px;margin-bottom:20px}
+h2{font-size:18px;font-weight:700;margin-bottom:12px;color:var(--text-bright)}
+/* FORM */
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.form-input{width:100%;padding:12px 16px;background:var(--surface);border:1px solid var(--glass-border);border-radius:12px;color:var(--text);font:400 15px 'Inter',sans-serif;outline:none;transition:border-color .2s,box-shadow .2s}
+.form-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+.form-input::placeholder{color:var(--text-dim)}
+select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+select.form-input option{background:#1a1a2e;color:var(--text)}
+/* SLIDER */
+.slider-wrap{position:relative;padding:8px 0}
+.slider{-webkit-appearance:none;width:100%;height:6px;border-radius:3px;background:var(--surface-hover);outline:none}
+.slider::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 0 12px var(--accent-glow);transition:transform .15s}
+.slider::-webkit-slider-thumb:hover{transform:scale(1.2)}
+.slider-val{text-align:center;font-size:20px;font-weight:700;margin-top:8px}
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 24px;border-radius:12px;font:600 14px 'Inter',sans-serif;cursor:pointer;border:none;transition:all .2s}
+.btn-primary{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;box-shadow:0 4px 16px rgba(99,102,241,0.3)}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(99,102,241,0.45)}
+.btn-ghost{background:var(--surface);color:var(--text);border:1px solid var(--glass-border)}
+.btn-ghost:hover{background:var(--surface-hover)}
+.btn-danger{background:rgba(248,113,113,0.15);color:var(--red);border:1px solid rgba(248,113,113,0.2)}
+.btn-sm{padding:8px 14px;font-size:12px;border-radius:8px}
+.btn-block{width:100%}
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-safe{background:rgba(52,211,153,0.15);color:var(--green)}
+.badge-review_soon{background:rgba(251,191,36,0.15);color:var(--yellow)}
+.badge-urgent{background:rgba(248,113,113,0.15);color:var(--red)}
+.badge-critical{background:rgba(248,113,113,0.25);color:#fca5a5;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+/* RETENTION RING */
+.ring-wrap{width:var(--ring-size);height:var(--ring-size);position:relative;flex-shrink:0}
+.ring-wrap svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring-bg{stroke:var(--surface-hover);stroke-width:5;fill:none}
+.ring-fg{stroke-width:5;fill:none;stroke-linecap:round;transition:stroke-dashoffset .8s ease}
+.ring-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700}
+/* TOPIC CARD */
+.topic-card{display:flex;gap:16px;align-items:center;cursor:pointer;transition:all .2s}
+.topic-info{flex:1;min-width:0}
+.topic-name{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topic-meta{font-size:12px;color:var(--text-dim);margin-top:2px}
+.topic-arrow{color:var(--text-dim);font-size:18px;transition:transform .2s}
+.topic-card:hover .topic-arrow{transform:translateX(3px);color:var(--accent)}
+/* DETAIL PANEL */
+.detail-panel{overflow:hidden;max-height:0;transition:max-height .4s ease, padding .3s ease;padding:0 20px}
+.detail-panel.open{max-height:800px;padding:16px 20px}
+/* CHART */
+.chart-wrap{position:relative;height:200px;margin:12px 0}
+/* ALERT BAR */
+.alert{padding:12px 16px;border-radius:12px;font-size:13px;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.alert-warn{background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.2);color:var(--yellow)}
+.alert-danger{background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.2);color:var(--red)}
+.alert-success{background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.2);color:var(--green)}
+.alert-info{background:rgba(129,140,248,0.1);border:1px solid rgba(129,140,248,0.2);color:var(--accent)}
+/* EMPTY STATE */
+.empty{text-align:center;padding:48px 20px}
+.empty-icon{font-size:48px;margin-bottom:12px}
+.empty-title{font-size:18px;font-weight:600;margin-bottom:4px}
+.empty-desc{font-size:13px;color:var(--text-dim)}
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);z-index:200;display:none;align-items:center;justify-content:center;padding:16px}
+.modal-overlay.show{display:flex}
+.modal{background:#1a1a2e;border:1px solid var(--glass-border);border-radius:20px;padding:24px;max-width:440px;width:100%;animation:fadeUp .3s ease}
+.modal h2{margin-bottom:16px}
+.modal-actions{display:flex;gap:8px;margin-top:20px;justify-content:flex-end}
+/* TOAST */
+.toast-container{position:fixed;top:16px;right:16px;z-index:300;display:flex;flex-direction:column;gap:8px}
+.toast{padding:12px 20px;border-radius:12px;font-size:13px;font-weight:500;animation:slideIn .3s ease;backdrop-filter:blur(12px)}
+@keyframes slideIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+.toast-success{background:rgba(52,211,153,0.2);border:1px solid rgba(52,211,153,0.3);color:var(--green)}
+.toast-error{background:rgba(248,113,113,0.2);border:1px solid rgba(248,113,113,0.3);color:var(--red)}
+/* ONBOARDING */
+.onboard-overlay{position:fixed;inset:0;background:rgba(10,10,26,0.95);z-index:400;display:flex;align-items:center;justify-content:center}
+.onboard-card{text-align:center;max-width:420px;padding:32px}
+.onboard-icon{font-size:64px;margin-bottom:16px}
+.onboard-title{font-size:24px;font-weight:800;margin-bottom:8px;background:linear-gradient(135deg,#e2e8f0,#818cf8);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.onboard-text{font-size:14px;color:var(--text-dim);line-height:1.6;margin-bottom:24px}
+.onboard-dots{display:flex;gap:8px;justify-content:center;margin-bottom:20px}
+.onboard-dot{width:8px;height:8px;border-radius:50%;background:var(--surface-hover);transition:all .3s}
+.onboard-dot.active{background:var(--accent);width:24px;border-radius:4px}
+/* SCROLL */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--glass-border);border-radius:3px}
+/* UTILS */
+.flex{display:flex}.gap-8{gap:8px}.gap-12{gap:12px}.gap-16{gap:16px}.items-center{align-items:center}.justify-between{justify-content:space-between}.mt-8{margin-top:8px}.mt-16{margin-top:16px}.mt-24{margin-top:24px}.mb-8{margin-bottom:8px}.mb-16{margin-bottom:16px}
+.text-center{text-align:center}.text-dim{color:var(--text-dim)}.text-sm{font-size:12px}.text-xs{font-size:11px}.fw-600{font-weight:600}.fw-700{font-weight:700}
+.fade-in{animation:fadeUp .4s ease}
+@media(min-width:640px){.app{padding:24px 32px calc(var(--nav-h) + 32px)}.card-grid{grid-template-columns:repeat(4,1fr)}}
+/* STREAK */
+.streak-bar{display:flex;gap:10px;align-items:center;background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;padding:14px 20px;margin-bottom:14px;backdrop-filter:blur(8px)}
+.streak-item{display:flex;flex-direction:column;align-items:center;gap:2px;flex:1}
+.streak-num{font-size:22px;font-weight:800;background:linear-gradient(135deg,#f59e0b,#f472b6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.streak-lbl{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.8px}
+.streak-divider{width:1px;height:32px;background:var(--glass-border)}
+.streak-days{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.day-dot{width:10px;height:10px;border-radius:50%;background:var(--surface-hover);transition:all .3s}
+.day-dot.active{background:var(--accent);box-shadow:0 0 6px var(--accent-glow)}
+.day-dot.today{background:var(--green);box-shadow:0 0 8px rgba(52,211,153,0.4)}
+/* DYNAMIC CARD GLOW */
+.card.glow-safe{box-shadow:0 0 0 1px rgba(52,211,153,0.15),0 4px 24px rgba(52,211,153,0.06)}
+.card.glow-review_soon{box-shadow:0 0 0 1px rgba(251,191,36,0.15),0 4px 24px rgba(251,191,36,0.07)}
+.card.glow-urgent{box-shadow:0 0 0 1px rgba(248,113,113,0.15),0 4px 24px rgba(248,113,113,0.08)}
+.card.glow-critical{box-shadow:0 0 0 1px rgba(248,113,113,0.25),0 4px 24px rgba(248,113,113,0.12);animation:criticalPulse 3s ease-in-out infinite}
+@keyframes criticalPulse{0%,100%{box-shadow:0 0 0 1px rgba(248,113,113,0.25),0 4px 24px rgba(248,113,113,0.12)}50%{box-shadow:0 0 0 1px rgba(248,113,113,0.4),0 6px 32px rgba(248,113,113,0.22)}}
+/* FILTER PILLS */
+.filter-pills{display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;padding-bottom:2px}
+.filter-pills::-webkit-scrollbar{display:none}
+.pill{padding:6px 16px;border-radius:20px;font:600 12px 'Inter',sans-serif;cursor:pointer;border:1px solid var(--glass-border);background:var(--surface);color:var(--text-dim);transition:all .2s;white-space:nowrap}
+.pill.active{background:linear-gradient(135deg,rgba(99,102,241,0.25),rgba(139,92,246,0.15));border-color:var(--accent);color:var(--accent);box-shadow:0 0 12px rgba(129,140,248,0.2)}
+/* DELETE QUICK BTN */
+.card-actions{display:flex;gap:6px;margin-left:auto;padding-left:8px}
+.icon-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--glass-border);background:var(--surface);color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+.icon-btn:hover{background:var(--surface-hover);color:var(--text)}
+.icon-btn.danger:hover{background:rgba(248,113,113,0.15);color:var(--red);border-color:rgba(248,113,113,0.3)}
+/* CONFETTI */
+.confetti-piece{position:fixed;width:8px;height:8px;border-radius:2px;pointer-events:none;z-index:999;animation:confettiFall linear forwards}
+@keyframes confettiFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
+</style>
+</head>
+<body>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toasts"></div>
+
+<!-- ONBOARDING -->
+<div class="onboard-overlay" id="onboarding" style="display:none">
+<div class="onboard-card">
+<div class="onboard-icon" id="ob-icon">🧠</div>
+<div class="onboard-title" id="ob-title">Welcome to MemoryAI</div>
+<div class="onboard-text" id="ob-text">Your personal memory coach that predicts when you'll forget what you studied — and helps you review at the perfect moment.</div>
+<div class="onboard-dots"><div class="onboard-dot active" data-s="0"></div><div class="onboard-dot" data-s="1"></div><div class="onboard-dot" data-s="2"></div></div>
+<button class="btn btn-primary" id="ob-btn" onclick="onboardNext()">Next →</button>
+</div>
+</div>
+
+<!-- DELETE MODAL -->
+<div class="modal-overlay" id="deleteModal">
+<div class="modal">
+<h2>🗑️ Delete Topic</h2>
+<p class="text-dim text-sm" id="deleteMsg">Are you sure? This cannot be undone.</p>
+<div class="modal-actions">
+<button class="btn btn-ghost btn-sm" onclick="closeModal()">Cancel</button>
+<button class="btn btn-danger btn-sm" id="confirmDeleteBtn" onclick="confirmDelete()">Delete</button>
+</div>
+</div>
+</div>
+
+<!-- MAIN APP -->
+<div class="app">
+
+<!-- ===== PAGE: DASHBOARD ===== -->
+<div class="page active" id="page-dashboard">
+<h1>📊 Dashboard</h1>
+<p class="subtitle">Your memory at a glance</p>
+<div id="streakBar"></div>
+<div id="alertsArea"></div>
+<div class="card-grid" id="statsGrid"></div>
+<div class="filter-pills" id="filterPills" style="display:none">
+  <button class="pill active" data-filter="all" onclick="setFilter('all')">All</button>
+  <button class="pill" data-filter="needs_review" onclick="setFilter('needs_review')">⚡ Needs Review</button>
+  <button class="pill" data-filter="safe" onclick="setFilter('safe')">✅ Safe</button>
+</div>
+<div id="topicsList"></div>
+<div class="empty" id="emptyDash" style="display:none">
+<div class="empty-icon">📚</div>
+<div class="empty-title">No topics yet</div>
+<div class="empty-desc">Add your first study topic to get started</div>
+<button class="btn btn-primary mt-16" onclick="switchPage('add')">➕ Add Topic</button>
+</div>
+</div>
+
+<!-- ===== PAGE: ADD TOPIC ===== -->
+<div class="page" id="page-add">
+<h1>➕ Add Topic</h1>
+<p class="subtitle">Log what you studied today</p>
+<div class="card">
+<div class="form-group">
+<label class="form-label">Topic Name</label>
+<input type="text" class="form-input" id="topicName" placeholder="e.g. Backpropagation, Spanish Verbs...">
+</div>
+<div class="form-group">
+<label class="form-label">Category</label>
+<select class="form-input" id="topicCategory">
+<option value="general">📁 General</option>
+<option value="math">📐 Math</option>
+<option value="science">🔬 Science</option>
+<option value="language">🗣️ Language</option>
+<option value="history">📜 History</option>
+<option value="code">💻 Programming</option>
+<option value="other">🏷️ Other</option>
+</select>
+</div>
+<div class="form-group">
+<label class="form-label">How well did you understand it?</label>
+<input type="range" class="slider" id="understandSlider" min="1" max="5" value="3" oninput="updateAddPreview()">
+<div class="slider-val" id="scoreEmoji">😐 Moderate</div>
+</div>
+<div class="alert alert-info mt-8" id="addPreview"></div>
+<button class="btn btn-primary btn-block mt-16" onclick="addTopic()">Add Topic</button>
+</div>
+</div>
+
+<!-- ===== PAGE: REVISE ===== -->
+<div class="page" id="page-revise">
+<h1>📝 Log Revision</h1>
+<p class="subtitle">Tell us how much you actually remember</p>
+<div id="reviseContent"></div>
+<div class="empty" id="emptyRevise" style="display:none">
+<div class="empty-icon">📝</div>
+<div class="empty-title">No topics to revise</div>
+<div class="empty-desc">Add some topics first</div>
+</div>
+</div>
+
+<!-- ===== PAGE: ACCURACY ===== -->
+<div class="page" id="page-accuracy">
+<h1>📈 Model Accuracy</h1>
+<p class="subtitle">Watch the AI learn your forgetting patterns</p>
+<div id="accuracyContent"></div>
+<div class="empty" id="emptyAccuracy" style="display:none">
+<div class="empty-icon">📈</div>
+<div class="empty-title">No data yet</div>
+<div class="empty-desc">Log a few revisions to see how the model improves</div>
+</div>
+</div>
+
+<!-- ===== PAGE: MANAGE ===== -->
+<div class="page" id="page-manage">
+<h1>⚙️ Settings</h1>
+<p class="subtitle">Manage your data</p>
+<div class="card">
+<h2>📤 Export Data</h2>
+<p class="text-sm text-dim mb-8">Download all your data as a JSON file</p>
+<button class="btn btn-ghost btn-sm" onclick="exportData()">Download JSON</button>
+</div>
+<div class="card">
+<h2>📥 Import Data</h2>
+<p class="text-sm text-dim mb-8">Restore from a previous export</p>
+<input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+<button class="btn btn-ghost btn-sm" onclick="document.getElementById('importFile').click()">Upload JSON</button>
+</div>
+<div class="card">
+<h2>🧪 Load Demo Data</h2>
+<p class="text-sm text-dim mb-8">Try the app with sample topics</p>
+<button class="btn btn-ghost btn-sm" onclick="loadDemo()">Load Demo</button>
+</div>
+<div class="card">
+<h2>🗑️ Clear All Data</h2>
+<p class="text-sm text-dim mb-8">Remove everything and start fresh</p>
+<button class="btn btn-danger btn-sm" onclick="clearAllData()">Clear All</button>
+</div>
+<div class="card" style="margin-top:24px">
+<h2>ℹ️ About</h2>
+<p class="text-sm text-dim" style="line-height:1.7">
+<strong>MemoryAI</strong> uses the Ebbinghaus Forgetting Curve with a personalized forgetting rate (λ) that adapts to YOUR actual recall performance.<br><br>
+<strong>The math:</strong> R(t) = e<sup>−λt/S</sup><br>
+Where R = retention, t = days, λ = your forgetting rate, S = memory stability.<br><br>
+After each revision, λ updates: λ<sub>new</sub> = λ<sub>old</sub> × (predicted / actual)<br>
+This makes predictions more accurate over time — your personal brain model.
+</p>
+</div>
+</div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="nav">
+<button class="nav-btn active" data-page="dashboard" onclick="switchPage('dashboard')">
+<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+Dashboard
+</button>
+<button class="nav-btn" data-page="add" onclick="switchPage('add')">
+<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+Add Topic
+</button>
+<button class="nav-btn" data-page="revise" onclick="switchPage('revise')">
+<svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+Revise
+</button>
+<button class="nav-btn" data-page="accuracy" onclick="switchPage('accuracy')">
+<svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+Accuracy
+</button>
+<button class="nav-btn" data-page="manage" onclick="switchPage('manage')">
+<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+Settings
+</button>
+</nav>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   MATH ENGINE — Ebbinghaus Forgetting Curve
+   ══════════════════════════════════════════════════════════════ */
+const MEM={
+  initialLambda(score){return+(1/Math.max(1,Math.min(5,score))).toFixed(4)},
+  retention(t,lam,stab=1){return+(Math.exp(-lam*t/stab)).toFixed(4)},
+  retentionPct(t,lam,stab=1){return+(this.retention(t,lam,stab)*100).toFixed(1)},
+  nextRevision(lam,stab=1,thr=0.6){return lam>0?+(-Math.log(thr)*stab/lam).toFixed(2):999},
+  updateLambda(old,pred,actual){if(actual<=0)actual=0.01;return+Math.max(0.05,Math.min(2,old*(pred/actual))).toFixed(4)},
+  updateStability(stab,actual){const f=actual>=0.8?2.5:actual>=0.6?1.8:actual>=0.4?1.2:0.8;return+(stab*f).toFixed(4)},
+  risk(lam,elapsed,stab=1){const r=this.retention(elapsed,lam,stab);return r>=0.75?'safe':r>=0.55?'review_soon':r>=0.35?'urgent':'critical'},
+  riskLabel(r){return{safe:'Safe',review_soon:'Review Soon',urgent:'Urgent',critical:'Critical'}[r]||r},
+  curvePoints(lam,stab=1,days=30){const p=[];for(let t=0;t<=days;t++)p.push({day:t,ret:this.retentionPct(t,lam,stab)});return p},
+  schedule(lam,stab=1){return[1,3,7,14,21,30].map(d=>({day:d,pct:this.retentionPct(d,lam,stab)}))}
+};
+
+/* ══════════════════════════════════════════════════════════════
+   DATA LAYER — localStorage
+   ══════════════════════════════════════════════════════════════ */
+const STORE_KEY='memoryai_data';
+function loadData(){try{return JSON.parse(localStorage.getItem(STORE_KEY))||{topics:[],activity:[]}}catch{return{topics:[],activity:[]}}}
+function saveData(d){localStorage.setItem(STORE_KEY,JSON.stringify(d))}
+function daysSince(iso){return(Date.now()-new Date(iso).getTime())/864e5}
+function getCurrentRet(t){const a=t.last_revised||t.study_date;return a?MEM.retentionPct(daysSince(a),t.lambda,t.stability||1):0}
+function getNextReview(t){const a=t.last_revised||t.study_date;if(!a)return'ASAP';const el=daysSince(a),du=Math.max(0,MEM.nextRevision(t.lambda,t.stability||1)-el);return du<0.5?'Today':du<1.5?'Tomorrow':new Date(Date.now()+du*864e5).toLocaleDateString('en',{month:'short',day:'numeric'})}
+function todayStr(){return new Date().toISOString().slice(0,10)}
+function recordActivity(){
+  const data=loadData();const t=todayStr();
+  if(!data.activity)data.activity=[];
+  if(!data.activity.includes(t)){data.activity.push(t);saveData(data);}
+}
+function computeStreak(){
+  const data=loadData();const act=new Set(data.activity||[]);
+  let streak=0,best=0,cur=0;
+  const today=new Date();
+  for(let i=0;i<365;i++){const d=new Date(today);d.setDate(d.getDate()-i);const s=d.toISOString().slice(0,10);if(act.has(s)){cur++}else{if(i===0){cur=0}break;}}
+  streak=cur;
+  // best streak
+  const sorted=[...act].sort();
+  let run=1;
+  for(let i=1;i<sorted.length;i++){const p=new Date(sorted[i-1]),c=new Date(sorted[i]);const diff=(c-p)/864e5;if(Math.round(diff)===1){run++;best=Math.max(best,run)}else run=1;}
+  if(sorted.length===1)best=1;
+  return{streak,best,totalDays:act.size};
+}
+function renderStreakBar(){
+  const data=loadData();const act=new Set(data.activity||[]);
+  const {streak,best,totalDays}=computeStreak();
+  // last 14 days dots
+  const dots=Array.from({length:14},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(13-i));const s=d.toISOString().slice(0,10);const isToday=i===13;return`<div class="day-dot ${act.has(s)?(isToday?'today':'active'):''}" title="${s}"></div>`;}).join('');
+  const icon=streak>=7?'🔥':streak>=3?'⚡':'📅';
+  document.getElementById('streakBar').innerHTML=`
+  <div class="streak-bar">
+    <div class="streak-item"><div class="streak-num">${icon} ${streak}</div><div class="streak-lbl">Day Streak</div></div>
+    <div class="streak-divider"></div>
+    <div class="streak-item"><div class="streak-num">${best}</div><div class="streak-lbl">Best</div></div>
+    <div class="streak-divider"></div>
+    <div class="streak-item"><div class="streak-num">${totalDays}</div><div class="streak-lbl">Total Days</div></div>
+    <div class="streak-divider"></div>
+    <div class="streak-item" style="flex:2"><div class="streak-days">${dots}</div><div class="streak-lbl" style="margin-top:4px">Last 14 days</div></div>
+  </div>`;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   NAVIGATION
+   ══════════════════════════════════════════════════════════════ */
+let currentPage='dashboard';
+let activeFilter='all';
+const charts={};
+function switchPage(p){
+  currentPage=p;
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===p));
+  if(p==='dashboard')renderDashboard();
+  else if(p==='add')updateAddPreview();
+  else if(p==='revise')renderRevise();
+  else if(p==='accuracy')renderAccuracy();
+}
+function setFilter(f){
+  activeFilter=f;
+  document.querySelectorAll('.pill').forEach(p=>p.classList.toggle('active',p.dataset.filter===f));
+  renderTopicList();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TOAST
+   ══════════════════════════════════════════════════════════════ */
+function toast(msg,type='success'){
+  const el=document.createElement('div');el.className='toast toast-'+type;el.textContent=msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';el.style.transform='translateX(40px)';el.style.transition='all .3s';setTimeout(()=>el.remove(),300)},2500);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ONBOARDING
+   ══════════════════════════════════════════════════════════════ */
+const OB_STEPS=[
+  {icon:'🧠',title:'Welcome to MemoryAI',text:'Your personal memory coach that predicts when you\'ll forget what you studied — and helps you review at the perfect moment.'},
+  {icon:'📊',title:'How It Works',text:'1. Add topics you studied\n2. Rate your understanding (1-5)\n3. Come back and log how much you remember\n4. The AI adapts to YOUR brain patterns'},
+  {icon:'🚀',title:'Ready to Start!',text:'The more you use it, the smarter it gets. After 3-5 revisions, predictions become remarkably accurate. Let\'s go!'}
+];
+let obStep=0;
+function showOnboarding(){document.getElementById('onboarding').style.display='flex';obStep=0;renderOBStep()}
+function renderOBStep(){
+  const s=OB_STEPS[obStep];
+  document.getElementById('ob-icon').textContent=s.icon;
+  document.getElementById('ob-title').textContent=s.title;
+  document.getElementById('ob-text').textContent=s.text;
+  document.getElementById('ob-btn').textContent=obStep<2?'Next →':'Get Started 🚀';
+  document.querySelectorAll('.onboard-dot').forEach((d,i)=>d.classList.toggle('active',i===obStep));
+}
+function onboardNext(){
+  if(obStep<2){obStep++;renderOBStep()}
+  else{document.getElementById('onboarding').style.display='none';localStorage.setItem('memoryai_onboarded','1')}
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RETENTION RING SVG
+   ══════════════════════════════════════════════════════════════ */
+function ringHTML(pct,size=72){
+  const r=size/2-5,c=2*Math.PI*r,off=c-(pct/100)*c;
+  const col=pct>=70?'var(--green)':pct>=50?'var(--yellow)':pct>=30?'var(--red)':'#7f1d1d';
+  return`<div class="ring-wrap" style="--ring-size:${size}px"><svg viewBox="0 0 ${size} ${size}"><circle class="ring-bg" cx="${size/2}" cy="${size/2}" r="${r}"/><circle class="ring-fg" cx="${size/2}" cy="${size/2}" r="${r}" stroke="${col}" stroke-dasharray="${c}" stroke-dashoffset="${off}"/></svg><div class="ring-text" style="color:${col}">${Math.round(pct)}%</div></div>`;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DASHBOARD
+   ══════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   CONFETTI
+   ══════════════════════════════════════════════════════════════ */
+function launchConfetti(){
+  const colors=['#818cf8','#34d399','#f472b6','#fbbf24','#f87171','#60a5fa'];
+  for(let i=0;i<60;i++){setTimeout(()=>{
+    const el=document.createElement('div');el.className='confetti-piece';
+    el.style.cssText=`left:${Math.random()*100}vw;top:-10px;background:${colors[Math.floor(Math.random()*colors.length)]};animation-duration:${0.8+Math.random()*1.2}s;width:${6+Math.random()*8}px;height:${6+Math.random()*8}px;border-radius:${Math.random()>0.5?'50%':'2px'}`;
+    document.body.appendChild(el);setTimeout(()=>el.remove(),2500);
+  },i*25);}
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DASHBOARD
+   ══════════════════════════════════════════════════════════════ */
+let _enrichedCache=[];
+function renderDashboard(){
+  recordActivity();
+  renderStreakBar();
+  const data=loadData(),topics=data.topics||[];
+  if(!topics.length){document.getElementById('emptyDash').style.display='';document.getElementById('statsGrid').innerHTML='';document.getElementById('topicsList').innerHTML='';document.getElementById('alertsArea').innerHTML='';document.getElementById('filterPills').style.display='none';return}
+  document.getElementById('emptyDash').style.display='none';
+  document.getElementById('filterPills').style.display='flex';
+  _enrichedCache=topics.map(t=>{const a=t.last_revised||t.study_date;const el=a?daysSince(a):0;return{...t,ret:getCurrentRet(t),elapsed:el,riskLevel:a?MEM.risk(t.lambda,el,t.stability||1):'safe',nextReview:getNextReview(t)}}).sort((a,b)=>a.ret-b.ret);
+  const avg=_enrichedCache.reduce((s,t)=>s+t.ret,0)/_enrichedCache.length;
+  const critical=_enrichedCache.filter(t=>t.riskLevel==='critical'||t.riskLevel==='urgent').length;
+  const totalRev=_enrichedCache.reduce((s,t)=>s+(t.revision_count||0),0);
+  const alerts=_enrichedCache.filter(t=>t.riskLevel!=='safe');
+  document.getElementById('alertsArea').innerHTML=alerts.length?`<div class="alert alert-${alerts.some(a=>a.riskLevel==='critical')?'danger':'warn'} mb-16">⚡ <strong>${alerts.length} topic(s)</strong> need your attention</div>`:''
+  document.getElementById('statsGrid').innerHTML=`
+    <div class="card stat-card"><div class="stat-val">${_enrichedCache.length}</div><div class="stat-label">Topics</div></div>
+    <div class="card stat-card"><div class="stat-val">${Math.round(avg)}%</div><div class="stat-label">Avg Retention</div></div>
+    <div class="card stat-card"><div class="stat-val">${critical}</div><div class="stat-label">Need Review</div></div>
+    <div class="card stat-card"><div class="stat-val">${totalRev}</div><div class="stat-label">Revisions</div></div>`;
+  renderTopicList();
+}
+function renderTopicList(){
+  let list=_enrichedCache;
+  if(activeFilter==='needs_review')list=list.filter(t=>t.riskLevel!=='safe');
+  else if(activeFilter==='safe')list=list.filter(t=>t.riskLevel==='safe');
+  if(!list.length){document.getElementById('topicsList').innerHTML=`<div class="empty" style="padding:32px 0"><div class="empty-icon">🎯</div><div class="empty-title">Nothing here</div><div class="empty-desc">No topics match this filter</div></div>`;return;}
+  document.getElementById('topicsList').innerHTML=list.map((t,i)=>`<div class="card glow-${t.riskLevel}" id="tc-${i}">
+    <div class="topic-card" onclick="toggleDetail(${i})">
+      ${ringHTML(t.ret)}
+      <div class="topic-info">
+        <div class="topic-name">${esc(t.name)}</div>
+        <div class="topic-meta"><span class="badge badge-${t.riskLevel}">${MEM.riskLabel(t.riskLevel)}</span> · Next: ${t.nextReview}</div>
+      </div>
+      <div class="card-actions">
+        <button class="icon-btn danger" title="Delete" onclick="event.stopPropagation();askDelete('${t.id}','${esc(t.name)}')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        </button>
+        <div class="topic-arrow">›</div>
+      </div>
+    </div>
+    <div class="detail-panel" id="detail-${i}">
+      <div class="flex gap-16 items-center justify-between mt-8 mb-8" style="flex-wrap:wrap">
+        <div class="text-sm"><strong>λ:</strong> ${t.lambda} · <strong>Stability:</strong> ${(t.stability||1).toFixed(2)}x · <strong>Score:</strong> ${t.understanding_score}/5 · <strong>Revisions:</strong> ${t.revision_count||0}</div>
+      </div>
+      <div class="flex gap-8 mb-8" style="flex-wrap:wrap">${MEM.schedule(t.lambda,t.stability||1).map(s=>`<div class="text-center text-xs" style="min-width:50px"><div class="fw-700" style="color:${s.pct>=70?'var(--green)':s.pct>=50?'var(--yellow)':'var(--red)'}">${s.pct}%</div><div class="text-dim">Day ${s.day}</div></div>`).join('')}</div>
+      <div class="chart-wrap"><canvas id="chart-${i}"></canvas></div>
+    </div>
+  </div>`).join('');
+  Object.keys(charts).forEach(k=>{if(k.startsWith('dash-')){charts[k].destroy();delete charts[k]}});
+}
+
+function toggleDetail(i){
+  const el=document.getElementById('detail-'+i);
+  const isOpen=el.classList.toggle('open');
+  if(isOpen){
+    let list=_enrichedCache;
+    if(activeFilter==='needs_review')list=list.filter(t=>t.riskLevel!=='safe');
+    else if(activeFilter==='safe')list=list.filter(t=>t.riskLevel==='safe');
+    const t=list[i];if(!t)return;
+    const pts=MEM.curvePoints(t.lambda,t.stability||1);
+    const canvas=document.getElementById('chart-'+i);if(!canvas)return;
+    if(charts['dash-'+i])charts['dash-'+i].destroy();
+    charts['dash-'+i]=new Chart(canvas,{type:'line',data:{labels:pts.map(p=>p.day),datasets:[
+      {data:pts.map(p=>p.ret),borderColor:'#818cf8',backgroundColor:'rgba(129,140,248,0.08)',fill:true,tension:.3,pointRadius:0,borderWidth:2},
+      {data:pts.map(p=>60),borderColor:'rgba(251,191,36,0.4)',borderDash:[6,4],pointRadius:0,borderWidth:1.5,fill:false},
+      {data:[{x:t.elapsed,y:t.ret}],type:'scatter',pointBackgroundColor:'#f87171',pointRadius:7,pointBorderColor:'#fff',pointBorderWidth:2}
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(26,26,46,0.95)',titleColor:'#e2e8f0',bodyColor:'#94a3b8',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,cornerRadius:8}},scales:{x:{title:{display:true,text:'Days',color:'#94a3b8',font:{size:11}},grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#64748b',font:{size:10}}},y:{min:0,max:105,title:{display:true,text:'Retention %',color:'#94a3b8',font:{size:11}},grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#64748b',font:{size:10}}}}}});
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ADD TOPIC
+   ══════════════════════════════════════════════════════════════ */
+const SCORE_LABELS={1:'😰 Barely understood',2:'😕 Shaky grasp',3:'😐 Moderate',4:'😊 Solid understanding',5:'🎯 Mastered it!'};
+function updateAddPreview(){
+  const score=+document.getElementById('understandSlider').value;
+  document.getElementById('scoreEmoji').textContent=SCORE_LABELS[score];
+  const lam=MEM.initialLambda(score);
+  const day1=MEM.retentionPct(1,lam);
+  const revIn=MEM.nextRevision(lam);
+  document.getElementById('addPreview').innerHTML=`λ = <strong>${lam}</strong> · Day 1 retention: <strong>${day1}%</strong> · First review in <strong>${revIn.toFixed(1)} days</strong>`;
+}
+function addTopic(){
+  const name=document.getElementById('topicName').value.trim();
+  if(!name){toast('Please enter a topic name','error');return}
+  const score=+document.getElementById('understandSlider').value;
+  const lam=MEM.initialLambda(score);
+  const data=loadData();
+  data.topics.push({id:crypto.randomUUID().slice(0,8),name,category:document.getElementById('topicCategory').value,study_date:new Date().toISOString(),last_revised:null,understanding_score:score,lambda:lam,stability:1,revision_count:0,revision_history:[]});
+  saveData(data);
+  document.getElementById('topicName').value='';
+  document.getElementById('understandSlider').value=3;updateAddPreview();
+  toast(`"${name}" added! Review in ${MEM.nextRevision(lam).toFixed(1)} days`);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   LOG REVISION
+   ══════════════════════════════════════════════════════════════ */
+function renderRevise(){
+  const data=loadData(),topics=data.topics||[];
+  if(!topics.length){document.getElementById('emptyRevise').style.display='';document.getElementById('reviseContent').innerHTML='';return}
+  document.getElementById('emptyRevise').style.display='none';
+  let opts=topics.map((t,i)=>`<option value="${i}">${t.name}</option>`).join('');
+  document.getElementById('reviseContent').innerHTML=`
+    <div class="card">
+      <div class="form-group"><label class="form-label">Select Topic</label><select class="form-input" id="revTopic" onchange="updateRevPreview()">${opts}</select></div>
+      <div class="card-grid" id="revStats" style="grid-template-columns:repeat(3,1fr)"></div>
+      <div class="form-group"><label class="form-label">How much do you actually remember? (0-100%)</label>
+        <input type="range" class="slider" id="revSlider" min="0" max="100" value="50" oninput="updateRevFeedback()">
+        <div class="slider-val" id="revSliderVal">50%</div>
+      </div>
+      <div id="revFeedback" class="mt-8"></div>
+      <button class="btn btn-primary btn-block mt-16" onclick="submitRevision()">Submit Revision</button>
+    </div>`;
+  updateRevPreview();
+}
+function updateRevPreview(){
+  const data=loadData(),topics=data.topics||[];
+  const idx=+document.getElementById('revTopic').value;
+  const t=topics[idx];if(!t)return;
+  const anchor=t.last_revised||t.study_date;
+  const elapsed=anchor?daysSince(anchor):0;
+  const pred=getCurrentRet(t);
+  document.getElementById('revStats').innerHTML=`
+    <div class="card stat-card"><div class="stat-val">${elapsed.toFixed(1)}</div><div class="stat-label">Days</div></div>
+    <div class="card stat-card"><div class="stat-val">${Math.round(pred)}%</div><div class="stat-label">Predicted</div></div>
+    <div class="card stat-card"><div class="stat-val">${t.lambda}</div><div class="stat-label">Current λ</div></div>`;
+  document.getElementById('revSlider').value=Math.round(pred);
+  document.getElementById('revSliderVal').textContent=Math.round(pred)+'%';
+  updateRevFeedback();
+}
+function updateRevFeedback(){
+  const data=loadData(),topics=data.topics||[];
+  const idx=+document.getElementById('revTopic').value;
+  const t=topics[idx];if(!t)return;
+  const pred=getCurrentRet(t);
+  const actual=+document.getElementById('revSlider').value;
+  document.getElementById('revSliderVal').textContent=actual+'%';
+  const diff=actual-pred;
+  if(diff>5)document.getElementById('revFeedback').innerHTML=`<div class="alert alert-success">🎉 Better than predicted by ${Math.round(diff)}% — your λ will decrease</div>`;
+  else if(diff<-5)document.getElementById('revFeedback').innerHTML=`<div class="alert alert-danger">💪 Worse by ${Math.round(Math.abs(diff))}% — we'll adjust your λ upward</div>`;
+  else document.getElementById('revFeedback').innerHTML=`<div class="alert alert-info">✨ Very close to prediction — model is well calibrated!</div>`;
+}
+function submitRevision(){
+  const data=loadData(),topics=data.topics||[];
+  const idx=+document.getElementById('revTopic').value;
+  const t=topics[idx];if(!t)return;
+  const anchor=t.last_revised||t.study_date;
+  const elapsed=anchor?daysSince(anchor):0;
+  const actual=+document.getElementById('revSlider').value;
+  const predicted=MEM.retention(elapsed,t.lambda,t.stability||1);
+  const actualR=actual/100;
+  const oldLam=t.lambda;
+  t.lambda=MEM.updateLambda(oldLam,predicted,actualR);
+  t.stability=MEM.updateStability(t.stability||1,actualR);
+  t.revision_count=(t.revision_count||0)+1;
+  t.last_revised=new Date().toISOString();
+  if(!t.revision_history)t.revision_history=[];
+  t.revision_history.push({date:new Date().toISOString().slice(0,10),days_elapsed:+elapsed.toFixed(2),predicted_retention:+(predicted*100).toFixed(1),actual_retention:actual,lambda_before:oldLam,lambda_after:t.lambda,accuracy_pct:+((1-Math.abs(predicted-actualR))*100).toFixed(1)});
+  data.topics[idx]=t;saveData(data);
+  recordActivity();
+  if(actual>=80){launchConfetti();toast('🎉 Excellent recall! Keep it up!');}
+  else toast(`λ: ${oldLam} → ${t.lambda} · Stability: ${t.stability.toFixed(2)}x`);
+  renderRevise();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MODEL ACCURACY
+   ══════════════════════════════════════════════════════════════ */
+function renderAccuracy(){
+  const data=loadData(),topics=data.topics||[];
+  const withHistory=topics.filter(t=>(t.revision_history||[]).length>0);
+  if(!withHistory.length){document.getElementById('emptyAccuracy').style.display='';document.getElementById('accuracyContent').innerHTML='';return}
+  document.getElementById('emptyAccuracy').style.display='none';
+  Object.keys(charts).forEach(k=>{if(k.startsWith('acc-')){charts[k].destroy();delete charts[k]}});
+  let html='';
+  withHistory.forEach((t,i)=>{
+    const h=t.revision_history;
+    const first=h[0].accuracy_pct,last=h[h.length-1].accuracy_pct,imp=last-first;
+    html+=`<div class="card">
+      <h2>📚 ${esc(t.name)}</h2>
+      ${h.length>=2?`<div class="card-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="card stat-card"><div class="stat-val">${Math.round(first)}%</div><div class="stat-label">Initial</div></div>
+        <div class="card stat-card"><div class="stat-val">${Math.round(last)}%</div><div class="stat-label">Current</div></div>
+        <div class="card stat-card"><div class="stat-val" style="${imp>=0?'':'background:linear-gradient(135deg,var(--red),var(--yellow));-webkit-background-clip:text'}">${imp>=0?'+':''}${Math.round(imp)}%</div><div class="stat-label">Change</div></div>
+      </div>`:''}
+      <div class="chart-wrap"><canvas id="acc-chart-${i}"></canvas></div>
+      <div style="overflow-x:auto;margin-top:12px"><table style="width:100%;font-size:12px;color:var(--text-dim);border-collapse:collapse">
+        <tr style="border-bottom:1px solid var(--glass-border)"><th style="text-align:left;padding:6px">Date</th><th>Predicted</th><th>Actual</th><th>Accuracy</th></tr>
+        ${h.map(r=>`<tr style="border-bottom:1px solid rgba(255,255,255,0.03)"><td style="padding:6px">${r.date}</td><td style="text-align:center">${r.predicted_retention}%</td><td style="text-align:center">${r.actual_retention}%</td><td style="text-align:center;color:${r.accuracy_pct>=80?'var(--green)':r.accuracy_pct>=60?'var(--yellow)':'var(--red)'}">${r.accuracy_pct}%</td></tr>`).join('')}
+      </table></div>
+    </div>`;
+  });
+  document.getElementById('accuracyContent').innerHTML=html;
+  // Draw charts after DOM update
+  requestAnimationFrame(()=>{
+    withHistory.forEach((t,i)=>{
+      const h=t.revision_history;
+      const canvas=document.getElementById('acc-chart-'+i);if(!canvas)return;
+      charts['acc-'+i]=new Chart(canvas,{type:'line',data:{labels:h.map((_,j)=>`#${j+1}`),datasets:[{data:h.map(r=>r.accuracy_pct),borderColor:'#818cf8',backgroundColor:'rgba(129,140,248,0.1)',fill:true,tension:.3,pointRadius:5,pointBackgroundColor:'#818cf8',pointBorderColor:'#fff',pointBorderWidth:2,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#64748b'}},y:{min:0,max:105,grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#64748b'}}}}});
+    });
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DELETE / MANAGE
+   ══════════════════════════════════════════════════════════════ */
+let deleteTargetId=null;
+function askDelete(id,name){deleteTargetId=id;document.getElementById('deleteMsg').textContent=`Delete "${name}"? This cannot be undone.`;document.getElementById('deleteModal').classList.add('show')}
+function closeModal(){document.getElementById('deleteModal').classList.remove('show');deleteTargetId=null}
+function confirmDelete(){
+  if(!deleteTargetId)return;
+  const data=loadData();data.topics=data.topics.filter(t=>t.id!==deleteTargetId);saveData(data);
+  closeModal();toast('Topic deleted');renderDashboard();
+}
+function exportData(){
+  const blob=new Blob([JSON.stringify(loadData(),null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='memoryai-backup.json';a.click();toast('Data exported!')
+}
+function importData(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();reader.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.topics){saveData(d);toast('Data imported!');renderDashboard()}else toast('Invalid file','error')}catch{toast('Failed to parse file','error')}};reader.readAsText(file);e.target.value='';
+}
+function loadDemo(){
+  const now=new Date();const d=(days)=>new Date(now-days*864e5).toISOString();
+  saveData({topics:[
+    {id:'demo1',name:'Backpropagation',category:'code',study_date:d(5),last_revised:d(2),understanding_score:3,lambda:0.35,stability:1.8,revision_count:1,revision_history:[{date:d(2).slice(0,10),days_elapsed:3,predicted_retention:34.5,actual_retention:45,lambda_before:0.3333,lambda_after:0.35,accuracy_pct:89.5}]},
+    {id:'demo2',name:'Spanish Conjugation',category:'language',study_date:d(3),last_revised:null,understanding_score:2,lambda:0.5,stability:1,revision_count:0,revision_history:[]},
+    {id:'demo3',name:'Pythagorean Theorem',category:'math',study_date:d(10),last_revised:d(4),understanding_score:5,lambda:0.18,stability:4.5,revision_count:2,revision_history:[{date:d(7).slice(0,10),days_elapsed:3,predicted_retention:74.1,actual_retention:80,lambda_before:0.2,lambda_after:0.185,accuracy_pct:94.1},{date:d(4).slice(0,10),days_elapsed:3,predicted_retention:87.1,actual_retention:90,lambda_before:0.185,lambda_after:0.18,accuracy_pct:97.1}]},
+    {id:'demo4',name:'Photosynthesis Process',category:'science',study_date:d(1),last_revised:null,understanding_score:4,lambda:0.25,stability:1,revision_count:0,revision_history:[]}
+  ]});
+  toast('Demo data loaded!');switchPage('dashboard');
+}
+function clearAllData(){if(confirm('Delete ALL topics and data? This cannot be undone.')){localStorage.removeItem(STORE_KEY);toast('All data cleared');switchPage('dashboard')}}
+
+/* ══════════════════════════════════════════════════════════════
+   INIT
+   ══════════════════════════════════════════════════════════════ */
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+window.addEventListener('DOMContentLoaded',()=>{
+  recordActivity();
+  if(!localStorage.getItem('memoryai_onboarded'))showOnboarding();
+  updateAddPreview();renderDashboard();
+});
+</script>
+</body>
+</html>

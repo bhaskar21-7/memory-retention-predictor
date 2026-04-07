@@ -1,0 +1,40 @@
+{
+  "user": {
+    "name": "demo",
+    "created_at": "2025-01-10T09:00:00"
+  },
+  "topics": [
+    {
+      "id": "t001",
+      "name": "Probability Theory",
+      "study_date": "2025-01-10T09:00:00",
+      "last_revised": null,
+      "understanding_score": 2,
+      "lambda": 0.5,
+      "stability": 1.0,
+      "revision_count": 0,
+      "revision_history": []
+    },
+    {
+      "id": "t002",
+      "name": "Bayesian Networks",
+      "study_date": "2025-01-12T14:00:00",
+      "last_revised": "2025-01-15T10:00:00",
+      "understanding_score": 4,
+      "lambda": 0.22,
+      "stability": 1.8,
+      "revision_count": 1,
+      "revision_history": [
+        {
+          "date": "2025-01-15T10:00:00",
+          "days_elapsed": 3.0,
+          "predicted_retention": 51.3,
+          "actual_retention": 70.0,
+          "lambda_before": 0.25,
+          "lambda_after": 0.22,
+          "accuracy_pct": 81.3
+        }
+      ]
+    }
+  ]
+}

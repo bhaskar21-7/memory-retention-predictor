@@ -1,0 +1,58 @@
+{
+  "topics": [
+    {
+      "id": "83c02fd9",
+      "name": "mgf of normal distribution",
+      "study_date": "2026-03-22T15:17:51.132013",
+      "last_revised": "2026-03-22T15:18:19.048518",
+      "understanding_score": 4,
+      "lambda": 0.25,
+      "stability": 2.5,
+      "revision_count": 1,
+      "revision_history": [
+        {
+          "date": "2026-03-22",
+          "days_elapsed": 0.0,
+          "predicted_retention": 100.0,
+          "actual_retention": 100.0,
+          "lambda_before": 0.25,
+          "lambda_after": 0.25,
+          "accuracy_pct": 100.0
+        }
+      ]
+    },
+    {
+      "id": "703c0fbb",
+      "name": "mgf of normal distribution",
+      "study_date": "2026-03-22T15:17:54.223882",
+      "last_revised": null,
+      "understanding_score": 4,
+      "lambda": 0.25,
+      "stability": 1.0,
+      "revision_count": 0,
+      "revision_history": []
+    },
+    {
+      "id": "d71d6a1a",
+      "name": "mgf of normal distribution",
+      "study_date": "2026-03-22T15:17:58.307487",
+      "last_revised": null,
+      "understanding_score": 5,
+      "lambda": 0.2,
+      "stability": 1.0,
+      "revision_count": 0,
+      "revision_history": []
+    },
+    {
+      "id": "67c25886",
+      "name": "mgf of normal distribution",
+      "study_date": "2026-03-22T15:18:06.411531",
+      "last_revised": null,
+      "understanding_score": 4,
+      "lambda": 0.25,
+      "stability": 1.0,
+      "revision_count": 0,
+      "revision_history": []
+    }
+  ]
+}

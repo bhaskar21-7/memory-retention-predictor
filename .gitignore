@@ -1,0 +1,17 @@
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Legacy Python files (kept for reference)
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
