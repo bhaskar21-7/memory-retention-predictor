@@ -15,14 +15,14 @@ Most study tools use the same forgetting curve for everyone. **MemoryAI adapts t
 
 | Feature | Description |
 |---------|-------------|
+| **🎮 Gamification** | Earn XP, level up (Novice → Legend), and collect dynamic achievements |
+| **☕ Focus Timer** | Built-in Pomodoro timer with auto-breaks for heavy study sessions |
+| **🎧 Focus Ambience** | Lightweight procedural Web Audio engine for offline Brown Noise |
 | **🧪 Personalized λ** | Every topic gets its own forgetting rate based on your actual recall |
-| **📊 Live Dashboard** | See all your topics with real-time retention percentages |
+| **📊 Live Dashboard** | Beautiful charts for memory retention and fully-featured Focus Analytics |
 | **📈 Adaptive Model** | Predictions improve after each revision — watch accuracy climb |
-| **🔔 Smart Alerts** | Know which topics need revision RIGHT NOW |
-| **📱 Mobile Friendly** | Works beautifully on phones — study on the go |
-| **💾 Auto-Save** | Data saves automatically in your browser |
-| **📤 Export/Import** | Back up your data anytime as JSON |
-| **🎨 Beautiful UI** | Dark glassmorphism design with smooth animations |
+| **💾 Auto-Save** | Data saves automatically in your browser (Zero backend dependencies) |
+| **🎨 Beautiful UI** | Dark glassmorphism design with confetti animations and glowing elements |
 
 ---
 
@@ -85,15 +85,13 @@ The original Streamlit version is preserved in the `legacy/` folder for referenc
 
 - [x] Personalized forgetting rate (λ)
 - [x] Adaptive λ updates from actual recall
-- [x] Memory stability tracking
 - [x] Interactive dashboard with charts
-- [x] Mobile-responsive design
-- [x] Export/Import data
-- [x] Demo data for first-time users
-- [ ] Push notification reminders
+- [x] Focus Pomodoro Timer 
+- [x] Gamification (Levels, XP, Badges)
+- [x] Focus Ambience (Procedural audio)
+- [x] Focus History Analytics & Streaks
 - [ ] Multi-device sync (cloud storage)
-- [ ] Study streak tracking
-- [ ] Social sharing cards
+- [ ] Push notification reminders
 
 ---
 

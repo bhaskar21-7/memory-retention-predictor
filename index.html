@@ -152,6 +152,21 @@ select.form-input option{background:#1a1a2e;color:var(--text)}
 /* CONFETTI */
 .confetti-piece{position:fixed;width:8px;height:8px;border-radius:2px;pointer-events:none;z-index:999;animation:confettiFall linear forwards}
 @keyframes confettiFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
+/* GAMIFICATION HEADER */
+.level-header{display:flex;align-items:center;gap:12px;background:rgba(10,10,26,0.6);border:1px solid var(--glass-border);padding:10px 16px;border-radius:16px;margin-bottom:20px;backdrop-filter:blur(8px)}
+.level-badge{background:linear-gradient(135deg,var(--accent),var(--pink));color:#fff;padding:4px 8px;border-radius:8px;font:800 12px 'Inter',sans-serif;text-shadow:0 1px 2px rgba(0,0,0,0.5);flex-shrink:0}
+.xp-bar{flex:1;height:8px;background:var(--surface-hover);border-radius:4px;overflow:hidden;position:relative}
+.xp-fill{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--accent),var(--pink));width:0%;transition:width 0.5s ease-out;box-shadow:0 0 10px var(--accent-glow)}
+.xp-text{font-size:12px;font-weight:600;color:var(--text-dim);white-space:nowrap}
+/* PLAN ITEM & TIMER */
+.plan-item{display:flex;flex-direction:column;gap:12px}
+.plan-header{display:flex;justify-content:space-between;align-items:center}
+.plan-actions{display:flex;gap:8px}
+.timer-display{font-size:32px;font-weight:800;font-variant-numeric:tabular-nums;background:linear-gradient(135deg,var(--green),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center;margin:12px 0;text-shadow:0 0 20px rgba(52,211,153,0.2)}
+.timer-display.paused{background:linear-gradient(135deg,var(--yellow),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+/* PROGRESS BAR */
+.study-progress{height:4px;background:var(--surface-hover);border-radius:2px;overflow:hidden;margin-bottom:8px}
+.study-progress-seg{height:100%;background:var(--green);transition:width 1s linear}
 </style>
 </head>
 <body>
@@ -185,6 +200,13 @@ select.form-input option{background:#1a1a2e;color:var(--text)}
 <!-- MAIN APP -->
 <div class="app">
 
+<!-- LEVEL HEADER -->
+<div class="level-header" id="levelHeader">
+  <div class="level-badge" id="playerLevelBox">Lvl 1</div>
+  <div class="xp-bar"><div class="xp-fill" id="playerXpFill"></div></div>
+  <div class="xp-text" id="playerXpText">0 / 100 XP</div>
+</div>
+
 <!-- ===== PAGE: DASHBOARD ===== -->
 <div class="page active" id="page-dashboard">
 <h1>📊 Dashboard</h1>
@@ -204,6 +226,46 @@ select.form-input option{background:#1a1a2e;color:var(--text)}
 <div class="empty-desc">Add your first study topic to get started</div>
 <button class="btn btn-primary mt-16" onclick="switchPage('add')">➕ Add Topic</button>
 </div>
+</div>
+
+<!-- ===== PAGE: PLAN ===== -->
+<div class="page" id="page-plan">
+  <h1>⏳ Focus Plan</h1>
+  <p class="subtitle">Set your goals and earn XP by completing sessions</p>
+  
+  <div class="card">
+    <div class="form-group">
+      <label class="form-label">What do you want to focus on?</label>
+      <input type="text" class="form-input" id="planTopicName" placeholder="e.g. Project research, Read ch 4...">
+    </div>
+    <div class="flex gap-12">
+      <div class="form-group" style="flex:1">
+        <label class="form-label">Category</label>
+        <select class="form-input" id="planCategory">
+          <option value="general">📁 General</option>
+          <option value="math">📐 Math</option>
+          <option value="science">🔬 Science</option>
+          <option value="language">🗣️ Language</option>
+          <option value="history">📜 History</option>
+          <option value="code">💻 Programming</option>
+          <option value="other">🏷️ Other</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:1">
+        <label class="form-label">Est. Time (min)</label>
+        <input type="number" class="form-input" id="planTime" placeholder="e.g. 30" min="5" value="25">
+      </div>
+    </div>
+    <button class="btn btn-primary btn-block mt-8" onclick="addPlanTopic()">➕ Add to Plan</button>
+  </div>
+
+  <h2>Your Upcoming Sessions</h2>
+  <div id="planList"></div>
+  <div class="empty" id="emptyPlan" style="display:none">
+    <div class="empty-icon">🎯</div>
+    <div class="empty-title">No planned sessions</div>
+    <div class="empty-desc">Add a task above to set a goal</div>
+  </div>
 </div>
 
 <!-- ===== PAGE: ADD TOPIC ===== -->
@@ -265,6 +327,12 @@ select.form-input option{background:#1a1a2e;color:var(--text)}
 <div class="page" id="page-manage">
 <h1>⚙️ Settings</h1>
 <p class="subtitle">Manage your data</p>
+
+<div class="card mb-16">
+  <h2>🏆 Achievements</h2>
+  <div class="card-grid" id="badgesList" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); margin-top: 12px; margin-bottom: 0;"></div>
+</div>
+
 <div class="card">
 <h2>📤 Export Data</h2>
 <p class="text-sm text-dim mb-8">Download all your data as a JSON file</p>
@@ -305,6 +373,10 @@ This makes predictions more accurate over time — your personal brain model.
 <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
 Dashboard
 </button>
+<button class="nav-btn" data-page="plan" onclick="switchPage('plan')">
+<svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M9 14h6"/><path d="M9 10h6"/><path d="M9 18h6"/></svg>
+Plan
+</button>
 <button class="nav-btn" data-page="add" onclick="switchPage('add')">
 <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
 Add Topic
@@ -344,7 +416,7 @@ const MEM={
    DATA LAYER — localStorage
    ══════════════════════════════════════════════════════════════ */
 const STORE_KEY='memoryai_data';
-function loadData(){try{return JSON.parse(localStorage.getItem(STORE_KEY))||{topics:[],activity:[]}}catch{return{topics:[],activity:[]}}}
+function loadData(){try{const d=JSON.parse(localStorage.getItem(STORE_KEY))||{};return{topics:d.topics||[],study_plan:d.study_plan||[],xp:d.xp||0,level:d.level||1,activity:d.activity||[],focus_history:d.focus_history||[],badges:d.badges||[]}}catch{return{topics:[],study_plan:[],xp:0,level:1,activity:[],focus_history:[],badges:[]}}}
 function saveData(d){localStorage.setItem(STORE_KEY,JSON.stringify(d))}
 function daysSince(iso){return(Date.now()-new Date(iso).getTime())/864e5}
 function getCurrentRet(t){const a=t.last_revised||t.study_date;return a?MEM.retentionPct(daysSince(a),t.lambda,t.stability||1):0}
@@ -398,9 +470,11 @@ function switchPage(p){
   document.getElementById('page-'+p).classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===p));
   if(p==='dashboard')renderDashboard();
+  else if(p==='plan')renderPlan();
   else if(p==='add')updateAddPreview();
   else if(p==='revise')renderRevise();
   else if(p==='accuracy')renderAccuracy();
+  else if(p==='manage')renderBadges();
 }
 function setFilter(f){
   activeFilter=f;
@@ -486,6 +560,15 @@ function renderDashboard(){
     <div class="card stat-card"><div class="stat-val">${Math.round(avg)}%</div><div class="stat-label">Avg Retention</div></div>
     <div class="card stat-card"><div class="stat-val">${critical}</div><div class="stat-label">Need Review</div></div>
     <div class="card stat-card"><div class="stat-val">${totalRev}</div><div class="stat-label">Revisions</div></div>`;
+  
+  if (!document.getElementById('focusChartCard')) {
+    const fc = document.createElement('div');
+    fc.id = 'focusChartCard';
+    fc.className = 'card mb-16 mt-16';
+    fc.innerHTML = `<h2>🔥 Focus History (Mins)</h2><div class="chart-wrap" style="height:120px"><canvas id="focusChartCanvas"></canvas></div>`;
+    document.getElementById('statsGrid').insertAdjacentElement('afterend', fc);
+  }
+  renderFocusChart();
   renderTopicList();
 }
 function renderTopicList(){
@@ -628,8 +711,13 @@ function submitRevision(){
   t.revision_history.push({date:new Date().toISOString().slice(0,10),days_elapsed:+elapsed.toFixed(2),predicted_retention:+(predicted*100).toFixed(1),actual_retention:actual,lambda_before:oldLam,lambda_after:t.lambda,accuracy_pct:+((1-Math.abs(predicted-actualR))*100).toFixed(1)});
   data.topics[idx]=t;saveData(data);
   recordActivity();
-  if(actual>=80){launchConfetti();toast('🎉 Excellent recall! Keep it up!');}
-  else toast(`λ: ${oldLam} → ${t.lambda} · Stability: ${t.stability.toFixed(2)}x`);
+  if(actual>=80){
+    launchConfetti(); playPop(); toast('🎉 Excellent recall! Keep it up!');
+    if(actual===100 && !data.badges.includes('perfect_recall')) {
+      data.badges.push('perfect_recall'); saveData(data);
+      playChime(); toast('🏆 Unlocked: Perfect Recall!', 'success');
+    }
+  } else toast(`λ: ${oldLam} → ${t.lambda} · Stability: ${t.stability.toFixed(2)}x`);
   renderRevise();
 }
 
@@ -672,6 +760,300 @@ function renderAccuracy(){
 }
 
 /* ══════════════════════════════════════════════════════════════
+   AUDIO ENGINE (100% Free / Synthetic) & ACHIEVEMENTS
+   ══════════════════════════════════════════════════════════════ */
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let aCtx = null;
+let ambientNode = null;
+function initAudio() { if(!aCtx) aCtx = new AudioCtx(); if(aCtx.state === 'suspended') aCtx.resume(); }
+
+function playPop() {
+  initAudio();
+  const osc = aCtx.createOscillator(), gain = aCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(800, aCtx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(300, aCtx.currentTime + 0.1);
+  gain.gain.setValueAtTime(0.3, aCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, aCtx.currentTime + 0.1);
+  osc.connect(gain); gain.connect(aCtx.destination);
+  osc.start(); osc.stop(aCtx.currentTime + 0.1);
+}
+
+function playChime() {
+  initAudio();
+  [523.25, 659.25, 783.99].forEach((freq, i) => {
+    setTimeout(() => {
+      const osc = aCtx.createOscillator(), gain = aCtx.createGain();
+      osc.type = 'sine'; osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.2, aCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, aCtx.currentTime + 1.5);
+      osc.connect(gain); gain.connect(aCtx.destination);
+      osc.start(); osc.stop(aCtx.currentTime + 1.5);
+    }, i * 150);
+  });
+}
+
+function toggleAmbient() {
+  initAudio();
+  if(ambientNode) {
+    ambientNode.stop(); ambientNode.disconnect(); ambientNode = null;
+    return false;
+  }
+  const bSize = aCtx.sampleRate * 2, buf = aCtx.createBuffer(1, bSize, aCtx.sampleRate);
+  const out = buf.getChannelData(0); let lastOut = 0;
+  for(let i=0; i<bSize; i++) {
+    const white = Math.random() * 2 - 1;
+    out[i] = (lastOut + (0.02 * white)) / 1.02;
+    lastOut = out[i]; out[i] *= 3.5;
+  }
+  ambientNode = aCtx.createBufferSource();
+  ambientNode.buffer = buf; ambientNode.loop = true;
+  const gain = aCtx.createGain(); gain.gain.value = 0.4;
+  ambientNode.connect(gain); gain.connect(aCtx.destination);
+  ambientNode.start();
+  return true;
+}
+
+function toggleAmbientUI(btn) {
+  const isPlaying = toggleAmbient();
+  btn.style.background = isPlaying ? 'rgba(129,140,248,0.2)' : 'var(--surface)';
+  btn.style.borderColor = isPlaying ? 'var(--accent)' : 'var(--glass-border)';
+}
+
+function renderFocusChart() {
+  const data = loadData(), cvs = document.getElementById('focusChartCanvas');
+  if(!cvs) return;
+  const labels = [], vals = [];
+  for(let i=6; i>=0; i--) {
+     const d = new Date(); d.setDate(d.getDate() - i);
+     labels.push(d.toLocaleDateString('en',{weekday:'short'}));
+     const s = d.toISOString().slice(0,10);
+     const match = (data.focus_history||[]).find(x => x.date === s);
+     vals.push(match ? match.mins : 0);
+  }
+  if(charts['focus']) charts['focus'].destroy();
+  charts['focus'] = new Chart(cvs, {
+     type: 'bar',
+     data: { labels, datasets: [{ data: vals, backgroundColor: '#818cf8', borderRadius: 4 }] },
+     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: true, grid:{display:false}, ticks:{color:'#94a3b8',font:{size:10}} }, y: { display:false, min: 0 } } }
+  });
+}
+
+const BADGE_DEFS = {
+  night_owl: { icon: '🦉', title: 'Night Owl', desc: 'Focus session after 10 PM' },
+  marathon: { icon: '🏃', title: 'Marathoner', desc: 'Reached 90 mins in one task' },
+  apprentice: { icon: '🎓', title: 'Apprentice', desc: 'Reached Level 10' },
+  perfect_recall: { icon: '🎯', title: 'Perfect Recall', desc: 'Scored 100% on a revision' }
+};
+
+function renderBadges() {
+  const el = document.getElementById('badgesList');
+  if(!el) return;
+  const b = loadData().badges || [];
+  el.innerHTML = Object.keys(BADGE_DEFS).map(id => {
+    const has = b.includes(id);
+    const def = BADGE_DEFS[id];
+    return `<div class="card stat-card" style="margin-bottom:0;${has ? '' : 'opacity:0.4;filter:grayscale(100%);'}">
+      <div style="font-size:36px;margin-bottom:8px">${def.icon}</div>
+      <div style="font-size:12px;font-weight:700">${def.title}</div>
+      <div style="font-size:10px;color:var(--text-dim);margin-top:4px">${def.desc}</div>
+    </div>`;
+  }).join('');
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   GAMIFICATION & XP
+   ══════════════════════════════════════════════════════════════ */
+function getLevelThreshold(level) { return level * 100; }
+function getLevelTitle(level) {
+  if (level < 5) return 'Novice';
+  if (level < 10) return 'Apprentice';
+  if (level < 20) return 'Adept';
+  if (level < 35) return 'Expert';
+  if (level < 50) return 'Master';
+  if (level < 75) return 'Grandmaster';
+  return 'Legend';
+}
+function addXP(amount) {
+  const data = loadData();
+  data.xp += amount;
+  let threshold = getLevelThreshold(data.level);
+  let leveledUp = false;
+  while(data.xp >= threshold) {
+    data.xp -= threshold;
+    data.level += 1;
+    threshold = getLevelThreshold(data.level);
+    leveledUp = true;
+  }
+  saveData(data);
+  updateXPHeader();
+  if(leveledUp) {
+    launchConfetti();
+    playChime();
+    toast(`🎉 Level Up! You are now ${getLevelTitle(data.level)} Lvl ${data.level}! ✨`, 'success');
+    if (data.level >= 10 && !data.badges.includes('apprentice')) {
+      data.badges.push('apprentice'); saveData(data);
+      toast('🏆 Unlocked: Apprentice!', 'success');
+    }
+  }
+}
+function updateXPHeader() {
+  const data = loadData();
+  document.getElementById('playerLevelBox').textContent = `${getLevelTitle(data.level)} Lvl ${data.level}`;
+  const thresh = getLevelThreshold(data.level);
+  document.getElementById('playerXpText').textContent = `${Math.round(data.xp)} / ${thresh} XP`;
+  document.getElementById('playerXpFill').style.width = `${Math.min(100, (data.xp / thresh) * 100)}%`;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   STUDY PLAN & TIMER
+   ══════════════════════════════════════════════════════════════ */
+let activeTimer = null;
+let activePlanId = null;
+
+function addPlanTopic() {
+  const name = document.getElementById('planTopicName').value.trim();
+  const cat = document.getElementById('planCategory').value;
+  const mins = +document.getElementById('planTime').value;
+  if(!name || mins < 1) { toast('Invalid topic or time','error'); return; }
+  const data = loadData();
+  data.study_plan.push({
+    id: crypto.randomUUID().slice(0,8),
+    name, category: cat, total_mins: mins, elapsed_sec: 0, status: 'pending' // pending, studying
+  });
+  saveData(data);
+  document.getElementById('planTopicName').value = '';
+  document.getElementById('planTime').value = '25';
+  toast(`"${name}" added to plan!`);
+  renderPlan();
+}
+
+function renderPlan() {
+  const data = loadData();
+  const plan = data.study_plan || [];
+  const list = document.getElementById('planList');
+  if(!plan.length) {
+    document.getElementById('emptyPlan').style.display = '';
+    list.innerHTML = '';
+    return;
+  }
+  document.getElementById('emptyPlan').style.display = 'none';
+  
+  list.innerHTML = plan.map((p, i) => {
+    const isTarget = p.id === activePlanId;
+    const totalSec = p.total_mins * 60;
+    const remSec = Math.max(0, totalSec - p.elapsed_sec);
+    const h = Math.floor(remSec / 3600);
+    const m = Math.floor((remSec % 3600) / 60).toString().padStart(2,'0');
+    const s = (remSec % 60).toString().padStart(2,'0');
+    const timeStr = h > 0 ? `${h}:${m}:${s}` : `${m}:${s}`;
+    const isDone = remSec <= 0;
+    const pct = Math.max(0, (remSec / totalSec) * 100);
+    
+    return `<div class="card ${isTarget?'glow-safe':''}" style="transition: all 0.3s ease">
+      <div class="plan-item">
+        <div class="plan-header">
+          <div>
+            <div class="topic-name">${esc(p.name)}</div>
+            <div class="topic-meta">Goal: ${p.total_mins} mins</div>
+          </div>
+          <button class="icon-btn danger" onclick="deletePlan('${p.id}')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        
+        <div class="study-progress">
+          <div class="study-progress-seg" style="width:${pct}%"></div>
+        </div>
+
+        ${isTarget && !isDone ? `
+          <div class="flex items-center justify-center gap-16">
+            <button class="icon-btn" onclick="toggleAmbientUI(this)" title="Toggle Lo-Fi / Brown Noise" style="width:40px;height:40px;font-size:18px">🎧</button>
+            <div class="timer-display ${!activeTimer?'paused':''}">${timeStr}</div>
+            <div style="width:40px"></div>
+          </div>
+          <div class="plan-actions mt-8">
+            ${activeTimer ? 
+              `<button class="btn btn-ghost btn-block" onclick="pauseTimer()">⏸ Pause</button>` : 
+              `<button class="btn btn-primary btn-block" onclick="startTimer('${p.id}')">▶ Resume</button>`}
+          </div>
+        ` : isDone ? `
+          <div class="alert alert-success mt-8">🎉 Session complete! (+50 XP)</div>
+          <button class="btn btn-primary btn-block mt-8" onclick="markPlanStudied('${p.id}', '${esc(p.name)}', '${p.category}')">Rate & Add to Memory</button>
+        ` : `
+          <div class="plan-actions mt-8">
+            <button class="btn btn-ghost btn-block" onclick="startTimer('${p.id}')">▶ Start Session</button>
+          </div>
+        `}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function startTimer(id) {
+  if (activeTimer) clearInterval(activeTimer);
+  activePlanId = id;
+  activeTimer = setInterval(() => {
+    let data = loadData();
+    let p = data.study_plan.find(x => x.id === id);
+    if(p) {
+      p.elapsed_sec += 1;
+      p.status = 'studying';
+      
+      const isMinute = (p.elapsed_sec > 0 && p.elapsed_sec % 60 === 0);
+      const isPomodoro = (p.elapsed_sec > 0 && p.elapsed_sec % 1500 === 0 && p.elapsed_sec < p.total_mins * 60);
+      const isGoal = (p.elapsed_sec >= p.total_mins * 60);
+
+      if(isMinute) {
+        const today = todayStr();
+        const entry = (data.focus_history||[]).find(x => x.date === today);
+        if(entry) entry.mins += 1; else { if(!data.focus_history) data.focus_history=[]; data.focus_history.push({date: today, mins: 1}); }
+        const hr = new Date().getHours();
+        if (hr >= 22 || hr < 4) { if(!data.badges.includes('night_owl')) { data.badges.push('night_owl'); playChime(); toast('🏆 Unlocked: Night Owl!','success'); } }
+        if (p.elapsed_sec >= 90 * 60) { if(!data.badges.includes('marathon')) { data.badges.push('marathon'); playChime(); toast('🏆 Unlocked: Marathoner!','success'); } }
+      }
+      saveData(data);
+      
+      if(isMinute) addXP(10);
+      if(isPomodoro) { playChime(); pauseTimer(); toast('☕ 25 mins elapsed! Take a short break.','info'); }
+      
+      if(isGoal) {
+        pauseTimer(); launchConfetti(); playPop(); addXP(50);
+        toast('🎉 Focus Goal Achieved! +50 XP Bonus!', 'success');
+      }
+      if(currentPage === 'plan') renderPlan();
+    } else {
+      pauseTimer();
+    }
+  }, 1000);
+  if(currentPage === 'plan') renderPlan();
+}
+
+function pauseTimer() {
+  if(activeTimer) clearInterval(activeTimer);
+  activeTimer = null;
+  if(currentPage === 'plan') renderPlan();
+}
+
+function deletePlan(id) {
+  const data = loadData();
+  data.study_plan = data.study_plan.filter(x => x.id !== id);
+  if(activePlanId === id) pauseTimer();
+  saveData(data);
+  toast('Plan removed');
+  if(currentPage === 'plan') renderPlan();
+}
+
+function markPlanStudied(id, name, cat) {
+  deletePlan(id);
+  switchPage('add');
+  document.getElementById('topicName').value = name;
+  document.getElementById('topicCategory').value = cat;
+  toast('Great job! Now rate your understanding.');
+}
+
+/* ══════════════════════════════════════════════════════════════
    DELETE / MANAGE
    ══════════════════════════════════════════════════════════════ */
 let deleteTargetId=null;
@@ -708,6 +1090,7 @@ function clearAllData(){if(confirm('Delete ALL topics and data? This cannot be u
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 window.addEventListener('DOMContentLoaded',()=>{
   recordActivity();
+  updateXPHeader();
   if(!localStorage.getItem('memoryai_onboarded'))showOnboarding();
   updateAddPreview();renderDashboard();
 });
